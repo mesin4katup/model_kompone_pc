@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Laboratorium Virtual Rangkaian Hardware PC 3D</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            cyber: {
+              bg: '#060d17',
+              panel: 'rgba(10, 22, 40, 0.72)',
+              cyan: '#22d3ee',
+              blue: '#0ea5e9',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Three.js Import Map (r160 + Addons) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #060d17;
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+
+    /* Background Grid Sirkuit Holografik */
+    .cyber-grid-bg {
+      background-image: 
+        radial-gradient(circle at 50% 45%, rgba(14, 165, 233, 0.14) 0%, rgba(6, 13, 23, 0.95) 70%),
+        linear-gradient(to right, rgba(34, 211, 238, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
+      background-size: 100% 100%, 36px 36px, 36px 36px;
+    }
+
+    /* Glassmorphism Panel */
+    .glass-panel {
+      background: rgba(9, 19, 34, 0.76);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 0 18px rgba(14, 165, 233, 0.06);
+    }
+
+    .glass-card {
+      background: rgba(15, 29, 50, 0.65);
+      border: 1px solid rgba(14, 165, 233, 0.22);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+      background: rgba(14, 165, 233, 0.16);
+      border-color: rgba(34, 211, 238, 0.65);
+      transform: translateY(-1px);
+    }
+
+    .glass-card.active {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.28), rgba(34, 211, 238, 0.12));
+      border-color: #22d3ee;
+      box-shadow: 0 0 16px rgba(34, 211, 238, 0.28);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(6, 13, 23, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(34, 211, 238, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(34, 211, 238, 0.65);
+    }
+
+    /* Pin Hotspot 3D Overlay */
+    .hotspot-pin {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 25;
+      pointer-events: auto;
+      transition: opacity 0.2s ease, transform 0.15s ease;
+    }
+
+    .hotspot-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 9999px;
+      background: radial-gradient(circle at 30% 30%, #22d3ee, #0284c7);
+      border: 2px solid #ffffff;
+      color: #04101d;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 14px rgba(34, 211, 238, 0.85);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .hotspot-btn::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 9999px;
+      border: 1.5px solid #22d3ee;
+      animation: pulseRing 2s infinite;
+      pointer-events: none;
+    }
+
+    .hotspot-pin.selected .hotspot-btn {
+      background: radial-gradient(circle at 30% 30%, #fde047, #f59e0b);
+      border-color: #ffffff;
+      color: #060d17;
+      transform: scale(1.18);
+      box-shadow: 0 0 20px rgba(250, 204, 21, 0.95);
+    }
+
+    .hotspot-pin.selected .hotspot-btn::after {
+      border-color: #fde047;
+    }
+
+    @keyframes pulseRing {
+      0% { transform: scale(0.85); opacity: 0.9; }
+      70% { transform: scale(1.45); opacity: 0; }
+      100% { transform: scale(1.45); opacity: 0; }
+    }
+
+    /* Range Slider Styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(14, 165, 233, 0.25);
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #22d3ee;
+      border: 2px solid #060d17;
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
+      cursor: pointer;
+    }
+
+    /* Canvas Touch Action */
+    #canvas-container canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="cyber-grid-bg relative">
+
+  <!-- VIEWPORT 3D FULLSCREEN -->
+  <div id="canvas-container" class="fixed inset-0 w-full h-full z-0"></div>
+
+  <!-- LAYER OVERLAY PIN HOTSPOT 3D-TO-2D -->
+  <div id="pins-overlay" class="fixed inset-0 pointer-events-none z-20 overflow-hidden"></div>
+
+  <!-- SPINNER LOADING GLB -->
+  <div id="loading-overlay" class="fixed inset-0 z-30 flex items-center justify-center pointer-events-none transition-opacity duration-300 opacity-0">
+    <div class="glass-panel px-6 py-4 rounded-2xl flex items-center gap-4 border border-cyan-400/50">
+      <div class="w-8 h-8 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin"></div>
+      <div>
+        <p class="text-sm font-bold text-cyan-300 tracking-wide">MEMUAT MODEL 3D GLB...</p>
+        <p id="loading-subtext" class="text-xs font-mono text-slate-400">Mengunduh geometri & mengkalibrasi skala...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST / MESSAGE NOTIFICATION (Pengganti alert) -->
+  <div id="toast-box" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 -translate-y-3">
+    <div id="toast-content" class="glass-panel px-5 py-2.5 rounded-full text-xs md:text-sm font-medium text-cyan-200 border border-cyan-400/60 flex items-center gap-2 shadow-lg">
+      <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+      <span id="toast-text">Notifikasi Sistem</span>
+    </div>
+  </div>
+
+  <!-- HEADER ATAS (KIRI & KANAN) -->
+  <header class="fixed top-0 left-0 right-0 z-30 p-3 md:p-4 flex flex-wrap items-start justify-between gap-3 pointer-events-none">
+    <!-- Header Kiri Atas -->
+    <div class="glass-panel rounded-2xl px-4 py-2.5 pointer-events-auto max-w-xl">
+      <div class="flex flex-wrap items-center gap-2 mb-1">
+        <span class="px-2.5 py-0.5 rounded-md text-[10px] md:text-xs font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 tracking-wider">
+          LAB TEKNIK KOMPUTER 3D
+        </span>
+        <span class="px-2.5 py-0.5 rounded-md text-[10px] md:text-xs font-mono font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/30 flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+          3D Interaktif
+        </span>
+        <!-- Tombol Toggle Drawer Mobile/Tablet -->
+        <button id="btn-toggle-left" class="lg:hidden ml-auto px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-semibold flex items-center gap-1">
+          <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Katalog
+        </button>
+        <button id="btn-toggle-right" class="lg:hidden px-2.5 py-1 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-semibold flex items-center gap-1">
+          <i data-lucide="sliders" class="w-3.5 h-3.5"></i> Detail
+        </button>
+      </div>
+      <h1 class="text-sm sm:text-base md:text-lg font-extrabold tracking-tight text-white leading-tight">
+        LABORATORIUM VIRTUAL <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-sky-400">RANGKAIAN HARDWARE PC 3D</span>
+      </h1>
+    </div>
+
+    <!-- Header Kanan Atas -->
+    <div class="glass-panel rounded-2xl px-4 py-2.5 pointer-events-auto hidden sm:flex items-center gap-4">
+      <div class="text-right">
+        <div class="text-[10px] font-mono uppercase tracking-widest text-cyan-400/80">KOMPONEN AKTIF</div>
+        <div id="header-active-name" class="text-sm md:text-base font-bold text-white leading-tight">Motherboard</div>
+        <div id="header-active-code" class="text-xs font-mono text-cyan-300">ASUS Z170-P / LGA 1151</div>
+      </div>
+      <div class="h-9 w-[1px] bg-cyan-400/25"></div>
+      <div class="text-right">
+        <div class="text-[10px] font-mono uppercase tracking-widest text-sky-400/80">SUB-SISTEM PC</div>
+        <div id="header-active-subsystem" class="text-xs md:text-sm font-semibold text-slate-200">Pemrosesan Utama</div>
+        <div id="header-model-status" class="text-[10px] font-mono text-emerald-400 flex items-center justify-end gap-1 mt-0.5">
+          <i data-lucide="box" class="w-3 h-3"></i> <span>GLB WebGL Ready</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR KIRI: KATALOG KOMPONEN PC 3D -->
+  <aside id="sidebar-left" class="fixed top-24 bottom-24 left-3 md:left-4 w-72 sm:w-80 z-30 glass-panel rounded-2xl flex flex-col overflow-hidden transition-transform duration-300 -translate-x-[115%] lg:translate-x-0">
+    <div class="p-3.5 border-b border-cyan-400/20">
+      <div class="flex items-center justify-between mb-2.5">
+        <h2 class="text-xs font-mono font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+          <i data-lucide="layers" class="w-4 h-4 text-cyan-400"></i>
+          Katalog Komponen PC
+        </h2>
+        <span id="component-count-badge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">7 Unit</span>
+      </div>
+
+      <!-- Input Pencarian Cepat -->
+      <div class="relative mb-2.5">
+        <i data-lucide="search" class="w-4 h-4 text-cyan-400/70 absolute left-3 top-1/2 -translate-y-1/2"></i>
+        <input 
+          id="search-input" 
+          type="text" 
+          placeholder="Cari nama / kode teknis..." 
+          class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950/70 border border-cyan-400/25 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition"
+        />
+      </div>
+
+      <!-- Filter Kategori -->
+      <div id="category-filters" class="flex flex-wrap gap-1.5">
+        <button data-cat="Semua" class="cat-btn active px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-cyan-500/25 text-cyan-200 border border-cyan-400 transition">Semua</button>
+        <button data-cat="Pemrosesan Utama" class="cat-btn px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-900/60 text-slate-300 border border-cyan-400/20 hover:border-cyan-400/50 transition">Pemrosesan Utama</button>
+        <button data-cat="Grafis & Memori" class="cat-btn px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-900/60 text-slate-300 border border-cyan-400/20 hover:border-cyan-400/50 transition">Grafis & Memori</button>
+        <button data-cat="Daya & Casing" class="cat-btn px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-900/60 text-slate-300 border border-cyan-400/20 hover:border-cyan-400/50 transition">Daya & Casing</button>
+      </div>
+    </div>
+
+    <!-- Daftar Kartu Komponen -->
+    <div id="component-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+      <!-- Diisi dinamis via JavaScript -->
+    </div>
+  </aside>
+
+  <!-- SIDEBAR KANAN: PANEL DETAIL & PEMBELAJARAN -->
+  <aside id="sidebar-right" class="fixed top-24 bottom-24 right-3 md:right-4 w-80 sm:w-96 z-30 glass-panel rounded-2xl flex flex-col overflow-hidden transition-transform duration-300 translate-x-[115%] lg:translate-x-0">
+    <!-- Header Komponen Kanan -->
+    <div class="p-3.5 border-b border-cyan-400/20 bg-gradient-to-r from-cyan-950/40 to-transparent">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <span id="detail-category-badge" class="inline-block text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/30 mb-1">
+            Pemrosesan Utama
+          </span>
+          <h2 id="detail-title" class="text-base md:text-lg font-extrabold text-white leading-snug">Motherboard</h2>
+          <p id="detail-subtitle" class="text-xs font-mono text-cyan-300">ASUS Z170-P / Socket LGA 1151</p>
+        </div>
+        <button id="btn-close-right" class="lg:hidden p-1.5 rounded-lg bg-slate-800/80 text-slate-300">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- 3 Tab Navigasi -->
+      <div class="grid grid-cols-3 gap-1.5 mt-3 p-1 rounded-xl bg-slate-950/75 border border-cyan-400/20">
+        <button data-tab="spesifikasi" class="tab-btn active py-1.5 px-2 rounded-lg text-xs font-semibold text-cyan-200 bg-cyan-500/25 border border-cyan-400/50 flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Spesifikasi
+        </button>
+        <button data-tab="troubleshooting" class="tab-btn py-1.5 px-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="wrench" class="w-3.5 h-3.5"></i> Troubleshoot
+        </button>
+        <button data-tab="kuis" class="tab-btn py-1.5 px-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Kuis 3D
+        </button>
+      </div>
+    </div>
+
+    <!-- Konten Tab -->
+    <div id="tab-content-area" class="flex-1 overflow-y-auto p-3.5 space-y-3.5">
+      
+      <!-- TAB 1: SPESIFIKASI -->
+      <div id="panel-spesifikasi" class="space-y-3.5">
+        <div class="rounded-xl p-3 bg-slate-900/60 border border-cyan-400/20">
+          <h3 class="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Deskripsi & Fungsi Utama
+          </h3>
+          <p id="detail-description" class="text-xs text-slate-300 leading-relaxed">
+            Papan sirkuit utama (PCB) yang menghubungkan seluruh komponen vital komputer.
+          </p>
+        </div>
+
+        <!-- 4 Kotak Metrik Spesifikasi Teknis -->
+        <div>
+          <h3 class="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i data-lucide="gauge" class="w-3.5 h-3.5"></i> Parameter Spesifikasi Teknis
+          </h3>
+          <div id="detail-metrics" class="grid grid-cols-2 gap-2">
+            <!-- Diisi dinamis 4 kotak -->
+          </div>
+        </div>
+
+        <!-- Kotak Titik Pin Komponen Aktif -->
+        <div class="rounded-xl p-3.5 bg-gradient-to-br from-cyan-950/65 to-slate-900/80 border border-cyan-400/45 shadow-inner">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="crosshair" class="w-3.5 h-3.5 text-amber-400"></i> Titik Pin Komponen Aktif
+            </span>
+            <span id="active-pin-badge" class="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40">
+              Pin #1
+            </span>
+          </div>
+          <h4 id="active-pin-title" class="text-sm font-bold text-white mb-0.5">Pilih Pin pada Model 3D</h4>
+          <p id="active-pin-tech" class="text-[11px] font-mono text-cyan-400 mb-2">Klik angka 1–5 di objek 3D</p>
+          <p id="active-pin-desc" class="text-xs text-slate-300 leading-relaxed">
+            Ketuk atau klik salah satu pin bernomor yang menempel pada model 3D untuk melihat detail arsitektur bagian tersebut.
+          </p>
+          <!-- Navigasi cepat antar pin -->
+          <div id="pin-quick-pills" class="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-cyan-400/15">
+            <!-- Tombol 1..5 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: TROUBLESHOOTING -->
+      <div id="panel-troubleshooting" class="hidden space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i> Diagnosa & Perbaikan TKJ
+          </h3>
+        </div>
+        <div id="troubleshooting-list" class="space-y-2.5">
+          <!-- Diisi dinamis -->
+        </div>
+      </div>
+
+      <!-- TAB 3: KUIS 3D -->
+      <div id="panel-kuis" class="hidden space-y-3">
+        <div class="rounded-xl p-3.5 bg-gradient-to-br from-sky-950/70 to-slate-900/90 border border-cyan-400/40">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-mono font-bold text-cyan-300 uppercase tracking-wider">Mode Evaluasi Praktikum</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+              Skor: <span id="quiz-score">0</span> / <span id="quiz-total">0</span>
+            </span>
+          </div>
+
+          <div id="quiz-question-box" class="p-3 rounded-xl bg-slate-950/80 border border-cyan-400/25 mb-3">
+            <p class="text-[11px] font-mono text-cyan-400 mb-1">INSTRUKSI TUGAS 3D:</p>
+            <p id="quiz-prompt" class="text-sm font-bold text-white leading-snug">
+              Klik pin pada model 3D yang menunjukkan bagian yang diminta!
+            </p>
+          </div>
+
+          <div id="quiz-feedback" class="hidden p-2.5 rounded-xl text-xs font-medium mb-3 border">
+            <!-- Umpan balik benar/salah -->
+          </div>
+
+          <div class="flex gap-2">
+            <button id="btn-next-quiz" class="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-600 hover:from-cyan-400 hover:to-sky-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/20 transition">
+              <i data-lucide="skip-forward" class="w-4 h-4"></i> Soal Berikutnya
+            </button>
+            <button id="btn-reset-quiz" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-600 transition" title="Reset Skor">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="rounded-xl p-3 bg-slate-900/50 border border-cyan-400/15 text-xs text-slate-400 leading-relaxed">
+          <strong class="text-cyan-300">Petunjuk Smartboard:</strong> Putar objek 3D menggunakan 1 jari dan cubit (pinch) untuk memperbesar, lalu ketuk langsung lingkaran angka pada komponen 3D untuk menjawab soal.
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- TOOLBAR KONTROL BAWAH (FLOATING DOCK) -->
+  <footer class="fixed bottom-3 left-3 right-3 z-30 flex justify-center pointer-events-none">
+    <div class="glass-panel rounded-2xl px-3 py-2 pointer-events-auto max-w-full overflow-x-auto flex items-center gap-2 md:gap-3">
+      
+      <!-- Kontrol Irisan 3D (Cross-Section) -->
+      <div class="flex items-center gap-2 pr-2.5 border-r border-cyan-400/25 shrink-0">
+        <div class="flex items-center gap-1.5 text-cyan-300">
+          <i data-lucide="scissors" class="w-4 h-4"></i>
+          <span class="text-[11px] font-mono font-bold hidden sm:inline">IRISAN 3D</span>
+        </div>
+        <select id="clip-axis" class="bg-slate-950/90 border border-cyan-400/35 text-xs text-cyan-200 rounded-lg px-2 py-1.5 font-mono focus:outline-none focus:border-cyan-400">
+          <option value="none">Off (Utuh)</option>
+          <option value="y">Horizontal (Y)</option>
+          <option value="x">Vertikal (X)</option>
+          <option value="z">Kedalaman (Z)</option>
+        </select>
+        <input id="clip-slider" type="range" min="-1.5" max="1.5" step="0.02" value="1.5" disabled class="w-20 md:w-24 opacity-40 transition" title="Jarak Potongan" />
+      </div>
+
+      <!-- Tombol-tombol Toggle Visual & Simulasi -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button id="btn-xray" class="dock-btn px-2.5 py-2 rounded-xl bg-slate-900/75 hover:bg-cyan-500/20 border border-cyan-400/25 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Mode Tembus Pandang X-Ray">
+          <i data-lucide="scan" class="w-4 h-4 text-cyan-400"></i>
+          <span class="hidden md:inline">X-Ray</span>
+        </button>
+
+        <button id="btn-wireframe" class="dock-btn px-2.5 py-2 rounded-xl bg-slate-900/75 hover:bg-cyan-500/20 border border-cyan-400/25 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Tampilan Jaring Poligon">
+          <i data-lucide="grid" class="w-4 h-4 text-cyan-400"></i>
+          <span class="hidden md:inline">Wireframe</span>
+        </button>
+
+        <button id="btn-hotspots" class="dock-btn active px-2.5 py-2 rounded-xl bg-cyan-500/25 border border-cyan-400 text-cyan-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Tampilkan / Sembunyikan Pin">
+          <i data-lucide="map-pin" class="w-4 h-4 text-cyan-300"></i>
+          <span class="hidden md:inline">Pin Hotspot</span>
+        </button>
+
+        <button id="btn-autorotate" class="dock-btn px-2.5 py-2 rounded-xl bg-slate-900/75 hover:bg-cyan-500/20 border border-cyan-400/25 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Putar Otomatis 360°">
+          <i data-lucide="refresh-cw" class="w-4 h-4 text-cyan-400"></i>
+          <span class="hidden md:inline">Putar Otomatis</span>
+        </button>
+
+        <button id="btn-simulate" class="dock-btn px-2.5 py-2 rounded-xl bg-slate-900/75 hover:bg-emerald-500/20 border border-cyan-400/25 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Simulasi Aliran Daya & Denyut RGB">
+          <i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i>
+          <span class="hidden md:inline">Simulasi Kerja</span>
+        </button>
+
+        <button id="btn-reset-cam" class="px-2.5 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/45 text-sky-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Kembalikan Posisi Kamera">
+          <i data-lucide="maximize-2" class="w-4 h-4 text-sky-300"></i>
+          <span class="hidden sm:inline">Reset Kamera</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- APLIKASI UTAMA THREE.JS & LOGIKA LABORATORIUM -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    // =========================================================================
+    // 1. DATABASE KOMPONEN HARDWARE PC (7 UNIT LENGKAP)
+    // =========================================================================
+    const HARDWARE_DATA = [
+      {
+        id: 'motherboard',
+        name: 'Motherboard',
+        code: 'ASUS Z170-P / LGA 1151',
+        category: 'Pemrosesan Utama',
+        glbUrl: 'https://raw.githubusercontent.com/mesin4katup/model_kompone_pc/main/asus_z170-p_motherboard.glb',
+        defaultRotation: [0.35, 0.3, 0],
+        description: 'Papan sirkuit utama (Printed Circuit Board) berstandar ATX yang menjadi tulang punggung komunikasi seluruh perangkat keras PC. Mengatur distribusi daya VRM serta jalur lalu lintas data berkecepatan tinggi antara CPU, RAM, GPU, dan penyimpanan.',
+        metrics: [
+          { label: 'Soket & Chipset', value: 'LGA 1151 / Z170' },
+          { label: 'Form Factor', value: 'ATX (30.5×22.6 cm)' },
+          { label: 'Dukungan Memori', value: '4× DDR4 Dual-Ch' },
+          { label: 'Ekspansi Utama', value: 'PCIe 3.0 x16 & M.2' }
+        ],
+        pins: [
+          {
+            num: 1,
+            pos: [0.0, 0.25, -0.25],
+            title: 'Soket Prosesor LGA 1151',
+            tech: 'Land Grid Array 1151-Pin Socket',
+            desc: 'Dudukan mekanis dengan 1.151 pin kontak emas tempat memasang CPU Intel Core generasi ke-6/7 dan mengunci posisi heatsink pendingin.'
+          },
+          {
+            num: 2,
+            pos: [0.48, 0.22, -0.22],
+            title: 'Slot Memori DIMM DDR4',
+            tech: '4× Dual-Channel DDR4 Slots (3466MHz OC)',
+            desc: 'Empat slot modul memori utama dengan pengunci samping dan jalur sirkuit terisolasi untuk meminimalkan interferensi sinyal RAM.'
+          },
+          {
+            num: 3,
+            pos: [-0.15, 0.18, 0.32],
+            title: 'Slot Ekspansi PCIe 3.0 x16',
+            tech: 'PCI Express 3.0 x16 Bus Interface',
+            desc: 'Slot berkecepatan tinggi berjalur 16-lane yang digunakan khusus untuk memasang kartu grafis (GPU) diskrit agar terhubung langsung ke CPU.'
+          },
+          {
+            num: 4,
+            pos: [0.38, 0.2, 0.45],
+            title: 'Heatsink Chipset Intel Z170',
+            tech: 'PCH (Platform Controller Hub) Thermal Armor',
+            desc: 'Pendingin aluminium pasif yang menyerap panas dari chip Southbridge/PCH pengatur jalur SATA, USB, audio, dan jaringan LAN.'
+          },
+          {
+            num: 5,
+            pos: [-0.62, 0.28, -0.45],
+            title: 'Panel I/O Belakang & VRM',
+            tech: 'Rear I/O Shield & 7-Phase Digi+ VRM',
+            desc: 'Kumpulan port eksternal (USB 3.0, HDMI, LAN RJ45, Audio) yang berdampingan dengan sirkuit regulator tegangan VRM penstabil daya CPU.'
+          }
+        ],
+        troubleshooting: [
+          {
+            issue: 'PC Menyala (Kipas Berputar) Namun Layar Blank / No POST',
+            cause: 'Baterai CMOS lemah, konfigurasi BIOS korup, atau debu/oksidasi pada pin slot RAM maupun PCIe.',
+            solution: 'Lakukan Clear CMOS (cabut baterai CR2032 selama 5 menit), bersihkan slot RAM menggunakan contact cleaner, dan pasang ulang 1 keping RAM.'
+          },
+          {
+            issue: 'Pin Soket CPU Bengkok atau Patah',
+            cause: 'Pemasangan prosesor tidak sejajar dengan tanda segitiga emas (pin-1) atau tekanan tuas pengunci berlebih.',
+            solution: 'Luruskan pin secara hati-hati dengan kaca pembesar dan jarum presisi; jika patah pada jalur data utama, soket atau motherboard wajib diganti.'
+          },
+          {
+            issue: 'Kapasitor VRM Menggembung / Overheat',
+            cause: 'Sirkulasi udara casing buruk atau penggunaan PSU berkualitas rendah dengan ripple tegangan tinggi.',
+            solution: 'Ganti PSU dengan unit bersertifikasi 80+ Bronze/Gold dan perbaiki airflow kipas intake-exhaust pada casing.'
+          }
+        ]
+      },
+      {
+        id: 'cpu',
+        name: 'Prosesor (CPU)',
+        code: 'AMD AM4 Architecture',
+        category: 'Pemrosesan Utama',
+        glbUrl: 'https://raw.githubusercontent.com/mesin4katup/model_kompone_pc/main/am4_cpu__free.glb',
+        defaultRotation: [0.55, 0.4, 0],
+        description: 'Unit pemroses pusat (otak komputer) berbasis arsitektur AMD Ryzen AM4 yang mengeksekusi instruksi aritmatika, logika, kontrol, dan manajemen memori dalam miliaran siklus per detik.',
+        metrics: [
+          { label: 'Tipe Soket', value: 'AMD PGA AM4 (1331-Pin)' },
+          { label: 'Litografi / Node', value: '7nm FinFET TSMC' },
+          { label: 'Arsitektur Core', value: 'Zen Multi-Core / SMT' },
+          { label: 'Thermal Design', value: '65W – 105W TDP' }
+        ],
+        pins: [
+          {
+            num: 1,
+            pos: [0.0, 0.25, 0.0],
+            title: 'Integrated Heat Spreader (IHS)',
+            tech: 'Nickel-Plated Copper IHS Lid',
+            desc: 'Pelat logam tembaga berlapis nikel di bagian atas CPU yang melindungi silicon die rapuh sekaligus meratakan perpindahan panas ke cooler.'
+          },
+          {
+            num: 2,
+            pos: [0.0, -0.18, 0.0],
+            title: 'Matriks Pin Emas PGA 1331',
+            tech: 'Pin Grid Array Gold-Plated Contacts',
+            desc: '1.331 jarum penghantar berlapis emas di sisi bawah prosesor yang menghantarkan daya listrik dan sinyal data berkecepatan tinggi ke motherboard.'
+          },
+          {
+            num: 3,
+            pos: [-0.55, 0.12, 0.55],
+            title: 'Indikator Orientasi Pin-1',
+            tech: 'Golden Triangle Alignment Key',
+            desc: 'Penanda sudut segitiga emas yang wajib disejajarkan dengan tanda segitiga pada soket AM4 motherboard sebelum tuas ZIF dikunci.'
+          },
+          {
+            num: 4,
+            pos: [0.48, 0.1, -0.35],
+            title: 'Substrat Organik Multi-Layer',
+            tech: 'High-Density Interconnect PCB Substrate',
+            desc: 'Papan hijau pembawa (carrier) berlapis mikro yang menghubungkan jalur mikroskopis dari chip silikon ke ribuan pin PGA di bawahnya.'
+          },
+          {
+            num: 5,
+            pos: [-0.35, 0.14, -0.45],
+            title: 'Kapasitor SMD Decoupling',
+            tech: 'Surface-Mount Multilayer Ceramic Capacitors',
+            desc: 'Deretan kapasitor mikro di sekitar substrat yang menyaring noise frekuensi tinggi dan menstabilkan tegangan inti (Vcore) saat beban penuh.'
+          }
+        ],
+        troubleshooting: [
+          {
+            issue: 'Thermal Throttling & PC Mati Mendadak Saat Render/Gaming',
+            cause: 'Pasta termal (thermal paste) mengering atau plastik pelindung heatsink lupa dilepas saat perakitan.',
+            solution: 'Bersihkan permukaan IHS dengan isopropil alkohol 90%, oleskan thermal paste baru secara merata, dan kencangkan bracket cooler.'
+          },
+          {
+            issue: 'CPU Menempel pada Heatsink Saat Dicabut (PGA Pull-Out)',
+            cause: 'Pasta termal mengeras seperti lem pada soket ZIF AM4 yang tidak memiliki penahan atas (ILM).',
+            solution: 'Panaskan CPU terlebih dahulu dengan menyalakan PC 5 menit, lalu putar heatsink perlahan ke kiri-kanan sebelum menariknya ke atas.'
+          },
+          {
+            issue: 'LED Debug CPU Menyala Merah di Motherboard',
+            cause: 'Versi BIOS motherboard belum mendukung generasi prosesor Ryzen yang dipasang atau kabel 8-pin EPS CPU belum terpasang.',
+            solution: 'Periksa koneksi kabel daya 4+4 pin CPU di pojok kiri atas motherboard dan lakukan update BIOS via fitur BIOS Flashback.'
+          }
+        ]
+      },
+      {
+        id: 'gpu',
+        name: 'Kartu Grafis (GPU)',
+        code: 'Radeon RX 580',
+        category: 'Grafis & Memori',
+        glbUrl: 'https://raw.githubusercontent.com/mesin4katup/model_kompone_pc/main/gpu_rx_580.glb',
+        defaultRotation: [0.25, -0.45, 0],
+        description: 'Kartu akselerator grafis diskrit berbasis arsitektur AMD Polaris 20 dengan ribuan stream processor paralel untuk rendering grafis 3D real-time, akselerasi video, dan komputasi visual.',
+        metrics: [
+          { label: 'Arsitektur GPU', value: 'AMD Polaris 20 (14nm)' },
+          { label: 'Kapasitas VRAM', value: '8 GB GDDR5 256-bit' },
+          { label: 'Antarmuka Bus', value: 'PCI Express 3.0 x16' },
+          { label: 'Konsumsi Daya', value: '185W TDP (8-Pin PCIe)' }
+        ],
+        pins: [
+          {
+            num: 1,
+            pos: [-0.42, 0.12, 0.35],
+            title: 'Kipas Pendingin Dual-Axial',
+            tech: '90mm Dual Ball-Bearing Cooling Fans',
+            desc: 'Dua kipas bertekanan statis tinggi yang mendorong udara dingin menembus sirip heatsink untuk menjaga suhu inti GPU tetap stabil di bawah 75°C.'
+          },
+          {
+            num: 2,
+            pos: [0.15, 0.22, 0.1],
+            title: 'Heatsink Aluminium & Heatpipe',
+            tech: 'Direct-Touch Copper Heatpipes & Fin Array',
+            desc: 'Susunan sirip aluminium padat dengan pipa tembaga yang menyerap panas dari chip GPU, modul VRAM, dan MOSFET VRM.'
+          },
+          {
+            num: 3,
+            pos: [-0.1, -0.35, 0.05],
+            title: 'Konektor Edge PCIe x16',
+            tech: 'PCI Express 3.0 x16 Gold Finger Interface',
+            desc: 'Deretan pin konektor emas di bagian bawah kartu yang ditancapkan ke slot PCIe x16 motherboard untuk transfer bandwidth hingga 15.75 GB/s.'
+          },
+          {
+            num: 4,
+            pos: [0.68, 0.32, 0.12],
+            title: 'Konektor Daya Tambahan 8-Pin',
+            tech: 'PCIe 8-Pin Auxiliary Power Input (150W)',
+            desc: 'Soket pasokan daya ekstra 12V langsung dari PSU karena kebutuhan daya RX 580 (185W) melampaui batas maksimal slot motherboard (75W).'
+          },
+          {
+            num: 5,
+            pos: [-0.88, 0.05, -0.15],
+            title: 'Bracket Output Display',
+            tech: 'DisplayPort 1.4, HDMI 2.0b & DVI-D Ports',
+            desc: 'Antarmuka keluaran sinyal video digital beresolusi tinggi ke monitor dengan dukungan teknologi sinkronisasi frame AMD FreeSync.'
+          }
+        ],
+        troubleshooting: [
+          {
+            issue: 'Muncul Garis-Garis Kotak / Artifact di Layar Monitor',
+            cause: 'Kerusakan pada chip memori VRAM GDDR5 akibat overheating berkepanjangan atau overclocking memori berlebih.',
+            solution: 'Turunkan clock memori GPU melalui AMD Adrenalin Software, ganti thermal pad VRAM, atau lakukan reballing pada teknisi spesialis.'
+          },
+          {
+            issue: 'Kipas GPU Berputar Kencang Tapi Tidak Ada Tampilan Gambar',
+            cause: 'Kabel daya 8-pin PCIe dari PSU kendur atau kartu grafis tidak duduk sempurna di pengunci slot PCIe.',
+            solution: 'Cabut dan pasang ulang GPU hingga tuas pengunci PCIe berbunyi klik, serta pastikan kabel power 8-pin terpasang penuh.'
+          },
+          {
+            issue: 'Driver Crash / Black Screen Saat Menjalankan Aplikasi 3D',
+            cause: 'Konflik file driver grafis lama dengan versi baru atau pasokan arus rail +12V PSU yang tidak stabil.',
+            solution: 'Hapus bersih driver menggunakan DDU (Display Driver Uninstaller) di Safe Mode lalu instal ulang driver WHQL resmi terbaru.'
+          }
+        ]
+      },
+      {
+        id: 'ram',
+        name: 'Memori (RAM)',
+        code: 'Kingston Fury Beast DDR5',
+        category: 'Grafis & Memori',
+        glbUrl: 'https://raw.githubusercontent.com/mesin4katup/model_kompone_pc/main/kingston_fury_beast_ddr5_ram_stick.glb',
+        defaultRotation: [0.35, 0.5, 0],
+        description: 'Modul memori akses acak volatil berkecepatan ultra-tinggi generasi DDR5 (Double Data Rate 5) yang menyimpan data dan instruksi program aktif agar dapat diakses seketika oleh prosesor.',
+        metrics: [
+          { label: 'Generasi & Tipe', value: 'DDR5 Unbuffered DIMM' },
+          { label: 'Kecepatan Transfer', value: '5200 – 6000 MT/s' },
+          { label: 'Tegangan Kerja', value: '1.1V – 1.35V (PMIC)' },
+          { label: 'Jumlah Pin Kontak', value: '288-Pin Gold DIMM' }
+        ],
+        pins: [
+          {
+            num: 1,
+            pos: [0.0, 0.15, 0.06],
+            title: 'Heat Spreader Aluminium Low-Profile',
+            tech: 'Anodized Aluminum Thermal Shield',
+            desc: 'Pelindung logam bergerigi yang melepaskan panas dari keping chip DRAM saat beroperasi pada frekuensi tinggi profil Intel XMP / AMD EXPO.'
+          },
+          {
+            num: 2,
+            pos: [0.0, -0.22, 0.0],
+            title: '288-Pin Gold Edge Connector',
+            tech: 'DDR5 288-Pin Curved Contact Fingers',
+            desc: 'Barisan kontak berlapis emas dengan lengkungan halus di tepinya untuk mempermudah pemasangan ke slot DIMM motherboard.'
+          },
+          {
+            num: 3,
+            pos: [0.04, -0.22, 0.0],
+            title: 'Lekukan Kunci (Key Notch DDR5)',
+            tech: 'Asymmetric Anti-Reverse Keying Notch',
+            desc: 'Celah pemisah pada bagian bawah PCB yang posisinya berbeda dari DDR4 guna mencegah kesalahan pemasangan terbalik atau salah generasi.'
+          },
+          {
+            num: 4,
+            pos: [0.35, -0.02, 0.04],
+            title: 'Chip PMIC On-Board',
+            tech: 'Power Management Integrated Circuit',
+            desc: 'Inovasi utama DDR5 di mana regulasi tegangan daya dilakukan langsung di atas keping RAM, bukan lagi sepenuhnya oleh motherboard.'
+          },
+          {
+            num: 5,
+            pos: [-0.45, 0.02, 0.04],
+            title: 'Chip IC DRAM & On-Die ECC',
+            tech: 'High-Density DDR5 SDRAM with On-Die ECC',
+            desc: 'Keping memori utama berkapasitas tinggi yang dilengkapi koreksi kesalahan internal (On-Die ECC) demi menjaga integritas bit data.'
+          }
+        ],
+        troubleshooting: [
+          {
+            issue: 'Blue Screen of Death (BSOD) Kode MEMORY_MANAGEMENT',
+            cause: 'Sel memori mengalami error baca/tulis atau profil kecepatan XMP/EXPO tidak stabil pada tegangan standar.',
+            solution: 'Uji kesehatan modul menggunakan Windows Memory Diagnostic atau MemTest86, lalu bersihkan pin emas dengan penghapus karet lembut.'
+          },
+          {
+            issue: 'Kapasitas RAM Terbaca Setengah di Sistem Operasi',
+            cause: 'Salah satu keping RAM belum terpasang rapat hingga pengunci slot menutup sempurna atau slot saluran B bermasalah.',
+            solution: 'Tekan kedua ujung modul RAM secara vertikal hingga kedua pengunci slot mengklik otomatis, dan gunakan konfigurasi slot A2 & B2.'
+          },
+          {
+            issue: 'Kecepatan RAM Berjalan di 4800 MT/s (Bukan 6000 MT/s)',
+            cause: 'Profil overclocking pabrik (Intel XMP 3.0 atau AMD EXPO) belum diaktifkan di dalam menu BIOS/UEFI.',
+            solution: 'Masuk ke BIOS (tekan Del/F2 saat boot), buka menu AI Tweaker / OC, dan aktifkan profil XMP/EXPO Profile 1.'
+          }
+        ]
+      },
+      {
+        id: 'ssd',
+        name: 'Penyimpanan (SSD NVMe)',
+        code: 'Samsung 980 PRO 1TB',
+        category: 'Grafis & Memori',
+        glbUrl: 'https://raw.githubusercontent.com/mesin4katup/model_kompone_pc/main/samsung_980_pro_nvme_1tb.glb',
+        defaultRotation: [0.5, 0.45, 0],
+        description: 'Media penyimpanan solid-state ultra-cepat berformat ringkas M.2 2280 yang memanfaatkan protokol NVMe di atas jalur PCIe Gen 4.0 x4 tanpa bagian mekanis bergerak.',
+        metrics: [
+          { label: 'Form Factor', value: 'M.2 2280 (22×80 mm)' },
+          { label: 'Antarmuka Protokol', value: 'PCIe Gen 4.0 x4 NVMe 1.3c' },
+          { label: 'Baca / Tulis Sekuensial', value: '7.000 / 5.000 MB/s' },
+          { label: 'Memori Flash', value: 'Samsung V-NAND 3-bit MLC' }
+        ],
+        pins: [
+          {
+            num: 1,
+            pos: [-0.72, 0.02, 0.0],
+            title: 'Konektor M-Key M.2 PCIe',
+            tech: 'M.2 Socket 3 (M-Key) 4-Lane Interface',
+            desc: 'Ujung konektor bertakik M-Key yang menghubungkan SSD langsung ke jalur PCIe x4 berkecepatan tinggi pada motherboard.'
+          },
+          {
+            num: 2,
+            pos: [-0.32, 0.06, 0.0],
+            title: 'Kontroler Samsung Elpis 8nm',
+            tech: 'Nickel-Coated 8nm NVMe Controller IC',
+            desc: 'Chip prosesor utama SSD berlapis nikel yang mengatur distribusi baca/tulis paralel, wear-leveling, dan manajemen suhu.'
+          },
+          {
+            num: 3,
+            pos: [0.02, 0.06, 0.0],
+            title: 'Chip Cache DRAM LPDDR4',
+            tech: '1GB LPDDR4 High-Speed Mapping Cache',
+            desc: 'Memori penyangga sementara yang menyimpan tabel pemetaan alamat data (FTL) agar akses file acak tetap super responsif.'
+          },
+          {
+            num: 4,
+            pos: [0.42, 0.06, 0.0],
+            title: 'Chip Memori 3D V-NAND Flash',
+            tech: '1TB Vertical NAND Non-Volatile Storage',
+            desc: 'Keping silikon penyimpanan permanen bertumpuk vertikal yang menyimpan sistem operasi, aplikasi, dan data meski daya dimatikan.'
+          },
+          {
+            num: 5,
+            pos: [0.76, 0.03, 0.0],
+            title: 'Takik Baut Pengunci M.2 & Label Tembaga',
+            tech: '2280 Mounting Notch & Heat Spreader Label',
+            desc: 'Setengah lingkaran di ujung belakang untuk sekrup standoff M.2 serta stiker berlapis film tembaga penyebar panas chip NAND.'
+          }
+        ],
+        troubleshooting: [
+          {
+            issue: 'SSD M.2 Tidak Terdeteksi di BIOS Maupun Instalasi Windows',
+            cause: 'Slot M.2 yang digunakan hanya mendukung mode SATA sedangkan SSD bertipe NVMe, atau kontroler Intel VMD/RAID aktif.',
+            solution: 'Pindahkan SSD ke slot M.2 utama terdekat CPU yang mendukung PCIe NVMe dan atur mode storage ke AHCI di BIOS.'
+          },
+          {
+            issue: 'Kecepatan Transfer Menurun Drastis Saat Menyalin File Besar',
+            cause: 'Suhu kontroler mencapai batas 80°C+ (thermal throttling) atau kapasitas kosong SSD tersisa kurang dari 10%.',
+            solution: 'Pasang heatsink M.2 motherboard beserta thermal pad-nya, serta sisakan minimal 15-20% ruang kosong untuk SLC cache.'
+          },
+          {
+            issue: 'Drive Berubah Menjadi Status Read-Only (Terkunci)',
+            cause: 'Batas usia tulis sel NAND (TBW - Total Bytes Written) telah terlampaui sehingga firmware melindungi data agar tetap bisa disalin.',
+            solution: 'Segera backup seluruh data penting ke media penyimpanan lain dan ganti unit SSD baru.'
+          }
+        ]
+      },
+      {
+        id: 'psu',
+        name: 'Power Supply (PSU)',
+        code: 'ATX Power Supply Unit',
+        category: 'Daya & Casing',
+        glbUrl: 'https://raw.githubusercontent.com/mesin4katup/model_kompone_pc/main/psu.glb',
+        defaultRotation: [0.3, -0.5, 0],
+        description: 'Unit catu daya switching (SMPS) berstandar ATX yang mengonversi arus listrik bolak-balik (AC 220V) dari stopkontak PLN menjadi arus searah tegangan rendah stabil (+12V, +5V, +3.3V) bagi seluruh komponen PC.',
+        metrics: [
+          { label: 'Standar Ukuran', value: 'ATX12V Form Factor' },
+          { label: 'Tegangan Output', value: '+12V, +5V, +3.3V DC' },
+          { label: 'Efisiensi Daya', value: '80 PLUS Certified' },
+          { label: 'Proteksi Sirkuit', value: 'OVP, UVP, OPP, SCP' }
+        ],
+        pins: [
+          {
+            num: 1,
+            pos: [0.0, 0.45, 0.0],
+            title: 'Kipas Pendingin Intake 120mm',
+            tech: '120mm Thermal-Controlled Cooling Fan',
+            desc: 'Kipas besar yang menyedot udara sejuk untuk mendinginkan trafo utama, kapasitor primer, dan heatsink MOSFET di dalam PSU.'
+          },
+          {
+            num: 2,
+            pos: [-0.65, 0.1, 0.35],
+            title: 'Soket Kabel Daya AC & Saklar Utama',
+            tech: 'IEC C14 AC Inlet & Rocker Power Switch',
+            desc: 'Port masuk kabel listrik utama 220V dari dinding beserta saklar pemutus arus mekanis (I/O) untuk keamanan perakitan.'
+          },
+          {
+            num: 3,
+            pos: [-0.65, -0.15, -0.25],
+            title: 'Kisi Exhaust Ventilasi Honeycomb',
+            tech: 'Hexagonal Low-Resistance Exhaust Mesh',
+            desc: 'Lubang pembuangan udara panas berbentuk sarang lebah di bagian belakang PSU yang meminimalkan hambatan aliran udara.'
+          },
+          {
+            num: 4,
+            pos: [0.65, 0.0, 0.15],
+            title: 'Konektor Utama ATX 24-Pin & EPS',
+            tech: '24-Pin Motherboard & 8-Pin CPU Power Rails',
+            desc: 'Kabel utama penyuplai daya ke papan induk dan sirkuit VRM prosesor dengan standar penguncian klip pengaman.'
+          },
+          {
+            num: 5,
+            pos: [0.65, -0.15, -0.3],
+            title: 'Jalur Daya Periferal PCIe & SATA',
+            tech: '+12V GPU PCIe & +5V/+3.3V SATA Connectors',
+            desc: 'Kabel daya khusus untuk kartu grafis diskrit (6+2 pin) serta perangkat penyimpanan harddisk/SSD SATA.'
+          }
+        ],
+        troubleshooting: [
+          {
+            issue: 'PC Sama Sekali Tidak Merespons Saat Tombol Power Ditekan',
+            cause: 'Saklar belakang PSU masih posisi O (Off), kabel power AC rusak, atau sekering internal PSU putus akibat lonjakan listrik.',
+            solution: 'Pastikan saklar PSU pada posisi I, uji PSU secara mandiri dengan metode Paperclip Test (hubungkan pin hijau PS_ON ke hitam GND).'
+          },
+          {
+            issue: 'PC Restart Otomatis Saat Bermain Game Berat',
+            cause: 'Kapasitas daya rail +12V PSU tidak mencukupi lonjakan daya puncak GPU (over-power protection aktif).',
+            solution: 'Hitung total TDP komponen dan tingkatkan kapasitas PSU ke daya yang lebih besar dengan sertifikasi minimal 80+ Bronze.'
+          },
+          {
+            issue: 'Terdengar Suara Mendengung (Coil Whine) atau Kipas Berisik',
+            cause: 'Getaran induktor elektromagnetik saat beban tinggi atau bantalan (bearing) kipas PSU sudah aus.',
+            solution: 'Bersihkan debu pada kisi kipas; jika suara berasal dari komponen internal lama, segera ganti PSU demi keamanan komponen lain.'
+          }
+        ]
+      },
+      {
+        id: 'casing',
+        name: 'Casing PC',
+        code: 'Mid-Tower Chassis',
+        category: 'Daya & Casing',
+        glbUrl: 'https://raw.githubusercontent.com/mesin4katup/model_kompone_pc/main/pc_case.glb',
+        defaultRotation: [0.22, -0.55, 0],
+        description: 'Rangka pelindung struktural berbahan baja SECC dan kaca tempered yang mengamankan seluruh komponen PC dari debu, benturan fisik, interferensi elektromagnetik, serta mengatur jalur aliran udara pendinginan.',
+        metrics: [
+          { label: 'Tipe Form Factor', value: 'ATX Mid-Tower Chassis' },
+          { label: 'Kompatibilitas Board', value: 'ATX, Micro-ATX, Mini-ITX' },
+          { label: 'Material Rangka', value: 'SPCC Steel & Tempered Glass' },
+          { label: 'Dukungan Airflow', value: 'Front Intake / Top-Rear Exhaust' }
+        ],
+        pins: [
+          {
+            num: 1,
+            pos: [0.0, 0.15, 0.38],
+            title: 'Panel Samping Kaca Tempered',
+            tech: '4mm Transparent Tempered Glass Side Panel',
+            desc: 'Penutup samping transparan tahan gores yang memudahkan pemantauan visual komponen internal, indikator LED debug, dan putaran kipas.'
+          },
+          {
+            num: 2,
+            pos: [0.45, 0.1, 0.0],
+            title: 'Panel Depan Airflow & Intake',
+            tech: 'Front Mesh Intake & Dust Filter',
+            desc: 'Bagian depan casing tempat udara sejuk luar masuk ditarik oleh kipas intake yang dilengkapi saringan debu magnetik.'
+          },
+          {
+            num: 3,
+            pos: [0.35, 0.65, 0.15],
+            title: 'Panel Front I/O & Tombol Power',
+            tech: 'Power SW, Reset SW, USB 3.0 & HD Audio',
+            desc: 'Pusat kendali pengguna berisi tombol daya, indikator LED HDD/Power, serta port akses cepat USB dan jack audio depan.'
+          },
+          {
+            num: 4,
+            pos: [-0.45, 0.15, -0.1],
+            title: 'Tray Motherboard & Slot Ekspansi PCI',
+            tech: 'Brass Standoff Tray & 7× Rear PCI Brackets',
+            desc: 'Dudukan logam berulir standoff untuk mencegah korsleting bagian bawah motherboard serta bukaan belakang untuk port GPU.'
+          },
+          {
+            num: 5,
+            pos: [-0.15, -0.58, 0.0],
+            title: 'Kompartemen Bawah PSU Shroud',
+            tech: 'Isolated Bottom PSU & Drive Bay Chamber',
+            desc: 'Ruang terpisah di dasar casing yang mengisolasi panas PSU dari ruang utama sekaligus menyembunyikan kerapian manajemen kabel.'
+          }
+        ],
+        troubleshooting: [
+          {
+            issue: 'Tombol Power Casing Tidak Berfungsi Saat Ditekan',
+            cause: 'Kabel konektor Front Panel (PWR_SW) terpasang terbalik/salah pin pada header F_PANEL di motherboard.',
+            solution: 'Cocokkan label kabel PWR_SW, RESET_SW, dan HDD_LED dengan diagram pinout F_PANEL pada buku manual motherboard.'
+          },
+          {
+            issue: 'Suhu Internal Komponen Panas & Debu Menumpuk Cepat',
+            cause: 'Arah pemasangan kipas casing salah (semua meniup keluar atau masuk) sehingga terjadi tekanan udara negatif.',
+            solution: 'Atur kipas depan/bawah sebagai Intake (udara masuk) dan kipas belakang/atas sebagai Exhaust (udara panas keluar).'
+          },
+          {
+            issue: 'Terasa Sengatan Listrik Ringan Saat Menyentuh Bodi Casing',
+            cause: 'Instalasi listrik rumah/sekolah tidak memiliki kabel arde (grounding) yang terhubung ke stopkontak.',
+            solution: 'Gunakan stopkontak 3-lubang dengan sistem grounding yang baik atau pasang kabel arde tambahan dari sekrup casing ke tanah.'
+          }
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // 2. STATE APLIKASI
+    // =========================================================================
+    const state = {
+      activeCompIndex: 0,
+      activePinIndex: 0,
+      activeTab: 'spesifikasi',
+      searchQuery: '',
+      selectedCategory: 'Semua',
+      xray: false,
+      wireframe: false,
+      showHotspots: true,
+      autoRotate: false,
+      simulate: false,
+      clipAxis: 'none',
+      clipValue: 1.5,
+      quizScore: 0,
+      quizTotal: 0,
+      quizTargetPinNum: 1,
+      quizAnswered: false
+    };
+
+    // =========================================================================
+    // 3. INISIALISASI THREE.JS SCENE, CAMERA, RENDERER & CONTROLS
+    // =========================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+    const defaultCamPos = new THREE.Vector3(0, 1.55, 4.1);
+    camera.position.copy(defaultCamPos);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    renderer.localClippingEnabled = true; // Wajib untuk Irisan 3D
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 1.6;
+    controls.maxDistance = 8.5;
+    controls.maxPolarAngle = Math.PI * 0.68;
+    controls.target.set(0, 0.15, 0);
+
+    // Pencahayaan Studio Cyber Holographic
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 1.15);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    keyLight.position.set(4, 6, 5);
+    scene.add(keyLight);
+
+    const rimCyanLight = new THREE.DirectionalLight(0x22d3ee, 1.8);
+    rimCyanLight.position.set(-5, 3, -4);
+    scene.add(rimCyanLight);
+
+    const bottomFillLight = new THREE.PointLight(0x0ea5e9, 2.0, 8);
+    bottomFillLight.position.set(0, -1.1, 0);
+    scene.add(bottomFillLight);
+
+    // =========================================================================
+    // 4. PEDESTAL / MEJA KERJA HOLOGRAFIK CYAN
+    // =========================================================================
+    const pedestalGroup = new THREE.Group();
+    pedestalGroup.position.set(0, -1.18, 0);
+    scene.add(pedestalGroup);
+
+    // Cakram dasar gelap metalik
+    const baseDisk = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.55, 1.72, 0.12, 64),
+      new THREE.MeshStandardMaterial({
+        color: 0x091526,
+        metalness: 0.85,
+        roughness: 0.25
+      })
+    );
+    pedestalGroup.add(baseDisk);
+
+    // Cincin bercahaya cyan luar
+    const outerGlowRing = new THREE.Mesh(
+      new THREE.RingGeometry(1.42, 1.52, 64),
+      new THREE.MeshBasicMaterial({
+        color: 0x22d3ee,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85
+      })
+    );
+    outerGlowRing.rotation.x = -Math.PI / 2;
+    outerGlowRing.position.y = 0.065;
+    pedestalGroup.add(outerGlowRing);
+
+    // Cincin bercahaya cyan dalam berputar
+    const innerTechRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.95, 1.02, 48),
+      new THREE.MeshBasicMaterial({
+        color: 0x0ea5e9,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.65
+      })
+    );
+    innerTechRing.rotation.x = -Math.PI / 2;
+    innerTechRing.position.y = 0.068;
+    pedestalGroup.add(innerTechRing);
+
+    // Grid sirkuit holografik pada permukaan pedestal
+    const polarGrid = new THREE.PolarGridHelper(1.4, 12, 5, 64, 0x22d3ee, 0x0ea5e9);
+    polarGrid.position.y = 0.066;
+    polarGrid.material.transparent = true;
+    polarGrid.material.opacity = 0.28;
+    pedestalGroup.add(polarGrid);
+
+    // =========================================================================
+    // 5. LOCAL CLIPPING PLANE & MANAJEMEN MODEL 3D (GLB + FALLBACK)
+    // =========================================================================
+    const clippingPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.5);
+    const activePlanes = [];
+
+    const modelPivot = new THREE.Group();
+    modelPivot.position.set(0, 0.15, 0);
+    scene.add(modelPivot);
+
+    let currentModelRoot = null;
+    const originalMaterialsMap = new WeakMap();
+    const glbCache = new Map();
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setCrossOrigin('anonymous');
+
+    // Membuat geometri prosedural cadangan jika koneksi internet terputus
+    function createProceduralFallback(compId) {
+      const group = new THREE.Group();
+      const pcbMat = new THREE.MeshStandardMaterial({ color: 0x0f2942, metalness: 0.4, roughness: 0.45 });
+      const metalMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.25 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.9, roughness: 0.2 });
+      const cyanAccentMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x0284c7, emissiveIntensity: 0.5 });
+
+      if (compId === 'motherboard') {
+        const board = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.06, 2.0), pcbMat);
+        const socket = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.45), metalMat);
+        socket.position.set(0, 0.06, -0.35);
+        const ram1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.85), cyanAccentMat);
+        ram1.position.set(0.55, 0.09, -0.35);
+        const pcie = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.1, 0.08), goldMat);
+        pcie.position.set(-0.15, 0.07, 0.35);
+        const pch = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.09, 0.35), metalMat);
+        pch.position.set(0.45, 0.06, 0.55);
+        group.add(board, socket, ram1, pcie, pch);
+      } else if (compId === 'cpu') {
+        const substrate = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 1.4), new THREE.MeshStandardMaterial({ color: 0x065f46, roughness: 0.4 }));
+        const ihs = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.12, 1.12), metalMat);
+        ihs.position.y = 0.09;
+        const pinsBase = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.08, 1.25), goldMat);
+        pinsBase.position.y = -0.07;
+        group.add(substrate, ihs, pinsBase);
+      } else if (compId === 'gpu') {
+        const shroud = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.35, 0.85), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.6, roughness: 0.35 }));
+        const fan1 = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.05, 24), cyanAccentMat);
+        fan1.position.set(-0.45, 0.18, 0);
+        const fan2 = fan1.clone();
+        fan2.position.set(0.45, 0.18, 0);
+        const pcieEdge = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.04), goldMat);
+        pcieEdge.position.set(-0.2, -0.22, 0.25);
+        group.add(shroud, fan1, fan2, pcieEdge);
+      } else if (compId === 'ram') {
+        const heatsink = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.48, 0.12), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.75, roughness: 0.25 }));
+        const topBar = new THREE.Mesh(new THREE.BoxGeometry(2.12, 0.07, 0.13), cyanAccentMat);
+        topBar.position.y = 0.25;
+        const pins = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.1, 0.05), goldMat);
+        pins.position.y = -0.26;
+        group.add(heatsink, topBar, pins);
+      } else if (compId === 'ssd') {
+        const pcb = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.05, 0.58), new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.4 }));
+        const ctrl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.04, 0.32), metalMat);
+        ctrl.position.set(-0.35, 0.04, 0);
+        const nand1 = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.04, 0.42), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+        nand1.position.set(0.35, 0.04, 0);
+        const keyM = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.48), goldMat);
+        keyM.position.set(-0.98, 0, 0);
+        group.add(pcb, ctrl, nand1, keyM);
+      } else if (compId === 'psu') {
+        const box = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.85, 1.3), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.35 }));
+        const grill = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.04, 32), cyanAccentMat);
+        grill.position.y = 0.43;
+        group.add(box, grill);
+      } else {
+        // Casing PC
+        const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.85, 1.75), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.65, roughness: 0.3 }));
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.65, 1.55), new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.32, roughness: 0.1 }));
+        glass.position.x = 0.51;
+        group.add(chassis, glass);
+      }
+      return group;
+    }
+
+    // Normalisasi Auto-Center & Auto-Scale (~2.2 unit) + Konfigurasi Material
+    function normalizeAndPrepareModel(rawObject, defaultRot) {
+      const wrapper = new THREE.Group();
+      const target = rawObject.clone();
+
+      // Terapkan rotasi orientasi awal agar menghadap optimal ke kamera
+      if (defaultRot) {
+        target.rotation.set(defaultRot[0], defaultRot[1], defaultRot[2]);
+      }
+      target.updateMatrixWorld(true);
+
+      // Hitung Bounding Box 3D
+      const box = new THREE.Box3().setFromObject(target);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      const targetScale = 2.2 / maxDim;
+
+      target.scale.multiplyScalar(targetScale);
+      target.updateMatrixWorld(true);
+
+      // Hitung ulang center setelah di-scale
+      const scaledBox = new THREE.Box3().setFromObject(target);
+      const scaledCenter = new THREE.Vector3();
+      scaledBox.getCenter(scaledCenter);
+
+      target.position.sub(scaledCenter);
+      wrapper.add(target);
+
+      // Siapkan material untuk Irisan 3D, X-Ray, dan Wireframe
+      wrapper.traverse((child) => {
+        if (child.isMesh && child.material) {
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          const clonedMats = mats.map((m) => {
+            const cloned = m.clone();
+            cloned.side = THREE.DoubleSide;
+            cloned.clipShadows = true;
+            cloned.clippingPlanes = activePlanes;
+            cloned.needsUpdate = true;
+            originalMaterialsMap.set(cloned, {
+              transparent: cloned.transparent,
+              opacity: cloned.opacity,
+              emissive: cloned.emissive ? cloned.emissive.clone() : new THREE.Color(0x000000),
+              emissiveIntensity: cloned.emissiveIntensity || 0,
+              depthWrite: cloned.depthWrite
+            });
+            return cloned;
+          });
+          child.material = Array.isArray(child.material) ? clonedMats : clonedMats[0];
+        }
+      });
+
+      return wrapper;
+    }
+
+    // Terapkan state visual (X-Ray, Wireframe, Clipping) ke model aktif
+    function applyVisualModes() {
+      if (!currentModelRoot) return;
+
+      currentModelRoot.traverse((child) => {
+        if (child.isMesh && child.material) {
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach((mat) => {
+            const orig = originalMaterialsMap.get(mat);
+            mat.wireframe = state.wireframe;
+            mat.clippingPlanes = activePlanes;
+
+            if (state.xray) {
+              mat.transparent = true;
+              mat.opacity = 0.28;
+              mat.depthWrite = false;
+              if (mat.emissive) {
+                mat.emissive.setHex(0x0ea5e9);
+                mat.emissiveIntensity = 0.65;
+              }
+            } else if (orig) {
+              mat.transparent = orig.transparent;
+              mat.opacity = orig.opacity;
+              mat.depthWrite = orig.depthWrite;
+              if (mat.emissive) {
+                mat.emissive.copy(orig.emissive);
+                mat.emissiveIntensity = orig.emissiveIntensity;
+              }
+            }
+            mat.needsUpdate = true;
+          });
+        }
+      });
+    }
+
+    // Fungsi pemuat GLB utama dengan cache dan fallback
+    async function loadHardwareModel(comp) {
+      const loadingOverlay = document.getElementById('loading-overlay');
+      const loadingSubtext = document.getElementById('loading-subtext');
+      const statusEl = document.getElementById('header-model-status');
+
+      loadingSubtext.textContent = `Mengunduh ${comp.code}...`;
+      loadingOverlay.classList.remove('opacity-0');
+
+      // Hapus model sebelumnya dari scene
+      if (currentModelRoot) {
+        modelPivot.remove(currentModelRoot);
+        currentModelRoot = null;
+      }
+
+      try {
+        let rawScene;
+        if (glbCache.has(comp.id)) {
+          rawScene = glbCache.get(comp.id);
+        } else {
+          rawScene = await new Promise((resolve, reject) => {
+            gltfLoader.load(
+              comp.glbUrl,
+              (gltf) => resolve(gltf.scene),
+              undefined,
+              (err) => reject(err)
+            );
+          });
+          glbCache.set(comp.id, rawScene);
+        }
+
+        currentModelRoot = normalizeAndPrepareModel(rawScene, comp.defaultRotation);
+        modelPivot.add(currentModelRoot);
+        applyVisualModes();
+
+        statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-3 h-3"></i> <span>GLB 3D Terkalibrasi</span>`;
+        statusEl.className = 'text-[10px] font-mono text-emerald-400 flex items-center justify-end gap-1 mt-0.5';
+      } catch (error) {
+        console.warn(`Gagal memuat GLB eksternal (${comp.glbUrl}), menggunakan geometri prosedural cadangan:`, error);
+        const fallbackGroup = createProceduralFallback(comp.id);
+        currentModelRoot = normalizeAndPrepareModel(fallbackGroup, comp.defaultRotation);
+        modelPivot.add(currentModelRoot);
+        applyVisualModes();
+
+        statusEl.innerHTML = `<i data-lucide="cpu" class="w-3 h-3"></i> <span>Mode Prosedural Cadangan</span>`;
+        statusEl.className = 'text-[10px] font-mono text-amber-400 flex items-center justify-end gap-1 mt-0.5';
+        showToast('Mode offline aktif: menampilkan model 3D cadangan.');
+      } finally {
+        loadingOverlay.classList.add('opacity-0');
+        lucide.createIcons();
+      }
+    }
+
+    // =========================================================================
+    // 6. PROYEKSI PIN HOTSPOT 3D-TO-2D HTML OVERLAY
+    // =========================================================================
+    const pinsOverlay = document.getElementById('pins-overlay');
+    let activePinElements = [];
+
+    function rebuildHotspotPins() {
+      pinsOverlay.innerHTML = '';
+      activePinElements = [];
+
+      const comp = HARDWARE_DATA[state.activeCompIndex];
+      comp.pins.forEach((pin, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = `hotspot-pin ${idx === state.activePinIndex ? 'selected' : ''}`;
+        if (!state.showHotspots) wrapper.style.display = 'none';
+
+        wrapper.innerHTML = `
+          <div class="relative flex flex-col items-center">
+            <button class="hotspot-btn" aria-label="Pin ${pin.num}: ${pin.title}">${pin.num}</button>
+            <div class="pin-tooltip mt-1.5 px-2.5 py-1 rounded-lg bg-slate-950/90 border border-cyan-400/60 backdrop-blur-md text-center shadow-lg whitespace-nowrap pointer-events-none ${idx === state.activePinIndex ? 'block' : 'hidden'}">
+              <div class="text-[11px] font-bold text-white leading-tight">${pin.title}</div>
+              <div class="text-[9px] font-mono text-cyan-300">${pin.tech}</div>
+            </div>
+          </div>
+        `;
+
+        const btn = wrapper.querySelector('.hotspot-btn');
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handlePinClick(idx);
+        });
+
+        pinsOverlay.appendChild(wrapper);
+        activePinElements.push({
+          el: wrapper,
+          localPos: new THREE.Vector3(pin.pos[0], pin.pos[1], pin.pos[2])
+        });
+      });
+    }
+
+    function updateHotspotPositions() {
+      if (!state.showHotspots || activePinElements.length === 0) return;
+
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const worldPos = new THREE.Vector3();
+      const projected = new THREE.Vector3();
+
+      activePinElements.forEach((item) => {
+        worldPos.copy(item.localPos);
+        modelPivot.localToWorld(worldPos);
+
+        projected.copy(worldPos).project(camera);
+
+        // Sembunyikan jika berada di belakang kamera
+        if (projected.z > 1) {
+          item.el.style.opacity = '0';
+          item.el.style.pointerEvents = 'none';
+          return;
+        }
+
+        const x = (projected.x * 0.5 + 0.5) * width;
+        const y = (-projected.y * 0.5 + 0.5) * height;
+
+        item.el.style.opacity = '1';
+        item.el.style.pointerEvents = 'auto';
+        item.el.style.left = `${x}px`;
+        item.el.style.top = `${y}px`;
+      });
+    }
+
+    function handlePinClick(pinIdx) {
+      state.activePinIndex = pinIdx;
+      const comp = HARDWARE_DATA[state.activeCompIndex];
+      const clickedPin = comp.pins[pinIdx];
+
+      // Perbarui tampilan visual pin
+      activePinElements.forEach((item, i) => {
+        const tooltip = item.el.querySelector('.pin-tooltip');
+        if (i === pinIdx) {
+          item.el.classList.add('selected');
+          tooltip.classList.remove('hidden');
+        } else {
+          item.el.classList.remove('selected');
+          tooltip.classList.add('hidden');
+        }
+      });
+
+      // Update panel detail pin di Tab Spesifikasi
+      updateActivePinDetailBox();
+
+      // Jika sedang di tab Kuis 3D, periksa jawaban siswa
+      if (state.activeTab === 'kuis') {
+        evaluateQuizAnswer(clickedPin.num);
+      }
+    }
+
+    // =========================================================================
+    // 7. RENDER UI SIDEBAR KIRI & KANAN
+    // =========================================================================
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      const text = document.getElementById('toast-text');
+      text.textContent = msg;
+      box.classList.remove('opacity-0', '-translate-y-3');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        box.classList.add('opacity-0', '-translate-y-3');
+      }, 2800);
+    }
+
+    function renderCatalogList() {
+      const listEl = document.getElementById('component-list');
+      const countBadge = document.getElementById('component-count-badge');
+      listEl.innerHTML = '';
+
+      const query = state.searchQuery.toLowerCase().trim();
+      const filtered = HARDWARE_DATA.map((item, index) => ({ item, index })).filter(({ item }) => {
+        const matchCat = state.selectedCategory === 'Semua' || item.category === state.selectedCategory;
+        const matchQuery = !query || item.name.toLowerCase().includes(query) || item.code.toLowerCase().includes(query);
+        return matchCat && matchQuery;
+      });
+
+      countBadge.textContent = `${filtered.length} Unit`;
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `
+          <div class="p-4 text-center text-xs text-slate-400 border border-dashed border-cyan-400/20 rounded-xl">
+            Komponen tidak ditemukan. Coba kata kunci lain.
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(({ item, index }) => {
+        const isActive = index === state.activeCompIndex;
+        const card = document.createElement('button');
+        card.className = `w-full text-left glass-card rounded-xl p-3 flex items-center justify-between gap-2.5 ${isActive ? 'active' : ''}`;
+        card.innerHTML = `
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 mb-0.5">
+              <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-400/25">
+                ${item.category}
+              </span>
+            </div>
+            <div class="text-sm font-bold text-white truncate">${item.name}</div>
+            <div class="text-[11px] font-mono text-slate-400 truncate">${item.code}</div>
+          </div>
+          <div class="shrink-0 flex flex-col items-end gap-1">
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-sky-500/20 text-cyan-300 border border-cyan-400/35 flex items-center gap-1">
+              <i data-lucide="map-pin" class="w-3 h-3"></i> ${item.pins.length} Pin
+            </span>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          selectComponent(index);
+          // Tutup drawer kiri otomatis di layar kecil
+          if (window.innerWidth < 1024) {
+            document.getElementById('sidebar-left').classList.add('-translate-x-[115%]');
+          }
+        });
+
+        listEl.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    function updateActivePinDetailBox() {
+      const comp = HARDWARE_DATA[state.activeCompIndex];
+      const pin = comp.pins[state.activePinIndex] || comp.pins[0];
+
+      document.getElementById('active-pin-badge').textContent = `Pin #${pin.num}`;
+      document.getElementById('active-pin-title').textContent = pin.title;
+      document.getElementById('active-pin-tech').textContent = pin.tech;
+      document.getElementById('active-pin-desc').textContent = pin.desc;
+
+      // Render tombol quick-pills 1..5
+      const pillsEl = document.getElementById('pin-quick-pills');
+      pillsEl.innerHTML = `<span class="text-[10px] font-mono text-slate-400 mr-1">Pin:</span>`;
+      comp.pins.forEach((p, idx) => {
+        const pill = document.createElement('button');
+        pill.className = `w-6 h-6 rounded-full font-mono text-xs font-bold transition ${
+          idx === state.activePinIndex
+            ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/50'
+            : 'bg-slate-800 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-500/25'
+        }`;
+        pill.textContent = p.num;
+        pill.addEventListener('click', () => handlePinClick(idx));
+        pillsEl.appendChild(pill);
+      });
+    }
+
+    function renderRightPanel() {
+      const comp = HARDWARE_DATA[state.activeCompIndex];
+
+      // Update Header Kanan Atas & Judul Panel Kanan
+      document.getElementById('header-active-name').textContent = comp.name;
+      document.getElementById('header-active-code').textContent = comp.code;
+      document.getElementById('header-active-subsystem').textContent = comp.category;
+
+      document.getElementById('detail-category-badge').textContent = comp.category;
+      document.getElementById('detail-title').textContent = comp.name;
+      document.getElementById('detail-subtitle').textContent = comp.code;
+      document.getElementById('detail-description').textContent = comp.description;
+
+      // Render 4 Metrik Spesifikasi
+      const metricsEl = document.getElementById('detail-metrics');
+      metricsEl.innerHTML = '';
+      comp.metrics.forEach((m) => {
+        const box = document.createElement('div');
+        box.className = 'rounded-xl p-2.5 bg-slate-950/65 border border-cyan-400/20';
+        box.innerHTML = `
+          <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">${m.label}</div>
+          <div class="text-xs font-bold text-cyan-200 mt-0.5">${m.value}</div>
+        `;
+        metricsEl.appendChild(box);
+      });
+
+      // Update Box Pin Aktif
+      updateActivePinDetailBox();
+
+      // Render Tab Troubleshooting
+      const troubleEl = document.getElementById('troubleshooting-list');
+      troubleEl.innerHTML = '';
+      comp.troubleshooting.forEach((tr, i) => {
+        const card = document.createElement('div');
+        card.className = 'rounded-xl p-3 bg-slate-900/70 border border-amber-400/25 space-y-1.5';
+        card.innerHTML = `
+          <div class="flex items-start gap-2">
+            <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold shrink-0">KASUS #${i + 1}</span>
+            <h4 class="text-xs font-bold text-white leading-snug">${tr.issue}</h4>
+          </div>
+          <p class="text-[11px] text-slate-300"><strong class="text-rose-300 font-mono">Penyebab:</strong> ${tr.cause}</p>
+          <p class="text-[11px] text-emerald-300/95 bg-emerald-950/35 p-2 rounded-lg border border-emerald-500/20"><strong class="font-mono">Solusi TKJ:</strong> ${tr.solution}</p>
+        `;
+        troubleEl.appendChild(card);
+      });
+
+      // Generate Soal Kuis Baru untuk komponen ini
+      generateQuizQuestion();
+    }
+
+    function selectComponent(index) {
+      state.activeCompIndex = index;
+      state.activePinIndex = 0;
+      const comp = HARDWARE_DATA[index];
+
+      renderCatalogList();
+      renderRightPanel();
+      rebuildHotspotPins();
+      loadHardwareModel(comp);
+    }
+
+    // =========================================================================
+    // 8. LOGIKA MODE KUIS 3D INTERAKTIF
+    // =========================================================================
+    function generateQuizQuestion() {
+      const comp = HARDWARE_DATA[state.activeCompIndex];
+      const randomPin = comp.pins[Math.floor(Math.random() * comp.pins.length)];
+      state.quizTargetPinNum = randomPin.num;
+      state.quizAnswered = false;
+
+      document.getElementById('quiz-prompt').innerHTML = `
+        Klik pin bernomor pada model 3D <span class="text-cyan-300">${comp.name}</span> yang menunjukkan: 
+        <span class="block mt-1 text-amber-300 font-mono text-xs bg-amber-400/10 px-2 py-1 rounded border border-amber-400/30">
+          "${randomPin.title} (${randomPin.tech})"
+        </span>
+      `;
+      const fb = document.getElementById('quiz-feedback');
+      fb.classList.add('hidden');
+
+      // Pastikan hotspot aktif saat kuis dimulai
+      if (!state.showHotspots) {
+        document.getElementById('btn-hotspots').click();
+      }
+    }
+
+    function evaluateQuizAnswer(selectedPinNum) {
+      if (state.quizAnswered) return;
+      state.quizAnswered = true;
+      state.quizTotal += 1;
+
+      const comp = HARDWARE_DATA[state.activeCompIndex];
+      const targetPin = comp.pins.find((p) => p.num === state.quizTargetPinNum);
+      const fb = document.getElementById('quiz-feedback');
+      fb.classList.remove('hidden', 'bg-emerald-950/70', 'border-emerald-400', 'text-emerald-200', 'bg-rose-950/70', 'border-rose-400', 'text-rose-200');
+
+      if (selectedPinNum === state.quizTargetPinNum) {
+        state.quizScore += 1;
+        fb.classList.add('bg-emerald-950/70', 'border-emerald-400', 'text-emerald-200');
+        fb.innerHTML = `<strong>BENAR! (+1 Poin)</strong> Pin #${selectedPinNum} adalah <em>${targetPin.title}</em>.`;
+      } else {
+        fb.classList.add('bg-rose-950/70', 'border-rose-400', 'text-rose-200');
+        fb.innerHTML = `<strong>KURANG TEPAT.</strong> Anda memilih Pin #${selectedPinNum}. Jawaban yang benar adalah <strong>Pin #${targetPin.num} (${targetPin.title})</strong>.`;
+      }
+
+      document.getElementById('quiz-score').textContent = state.quizScore;
+      document.getElementById('quiz-total').textContent = state.quizTotal;
+    }
+
+    // =========================================================================
+    // 9. EVENT LISTENERS UI & TOOLBAR BAWAH
+    // =========================================================================
+    // Pencarian & Filter Kategori
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      state.searchQuery = e.target.value;
+      renderCatalogList();
+    });
+
+    document.querySelectorAll('.cat-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.cat-btn').forEach((b) => {
+          b.classList.remove('active', 'bg-cyan-500/25', 'text-cyan-200', 'border-cyan-400');
+          b.classList.add('bg-slate-900/60', 'text-slate-300', 'border-cyan-400/20');
+        });
+        btn.classList.add('active', 'bg-cyan-500/25', 'text-cyan-200', 'border-cyan-400');
+        btn.classList.remove('bg-slate-900/60', 'text-slate-300', 'border-cyan-400/20');
+        state.selectedCategory = btn.dataset.cat;
+        renderCatalogList();
+      });
+    });
+
+    // Navigasi 3 Tab Kanan
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach((b) => {
+          b.classList.remove('active', 'text-cyan-200', 'bg-cyan-500/25', 'border', 'border-cyan-400/50');
+          b.classList.add('text-slate-400');
+        });
+        btn.classList.add('active', 'text-cyan-200', 'bg-cyan-500/25', 'border', 'border-cyan-400/50');
+        btn.classList.remove('text-slate-400');
+
+        state.activeTab = btn.dataset.tab;
+        document.getElementById('panel-spesifikasi').classList.toggle('hidden', state.activeTab !== 'spesifikasi');
+        document.getElementById('panel-troubleshooting').classList.toggle('hidden', state.activeTab !== 'troubleshooting');
+        document.getElementById('panel-kuis').classList.toggle('hidden', state.activeTab !== 'kuis');
+
+        if (state.activeTab === 'kuis') {
+          generateQuizQuestion();
+        }
+      });
+    });
+
+    // Tombol Kuis
+    document.getElementById('btn-next-quiz').addEventListener('click', generateQuizQuestion);
+    document.getElementById('btn-reset-quiz').addEventListener('click', () => {
+      state.quizScore = 0;
+      state.quizTotal = 0;
+      document.getElementById('quiz-score').textContent = '0';
+      document.getElementById('quiz-total').textContent = '0';
+      generateQuizQuestion();
+      showToast('Skor kuis telah direset.');
+    });
+
+    // Mobile/Tablet Drawer Toggles
+    document.getElementById('btn-toggle-left').addEventListener('click', () => {
+      document.getElementById('sidebar-left').classList.toggle('-translate-x-[115%]');
+      document.getElementById('sidebar-right').classList.add('translate-x-[115%]');
+    });
+    document.getElementById('btn-toggle-right').addEventListener('click', () => {
+      document.getElementById('sidebar-right').classList.toggle('translate-x-[115%]');
+      document.getElementById('sidebar-left').classList.add('-translate-x-[115%]');
+    });
+    document.getElementById('btn-close-right').addEventListener('click', () => {
+      document.getElementById('sidebar-right').classList.add('translate-x-[115%]');
+    });
+
+    // Helper Toggle Button Style
+    function setDockButtonState(btn, isActive) {
+      if (isActive) {
+        btn.classList.add('active', 'bg-cyan-500/25', 'border-cyan-400', 'text-cyan-200');
+        btn.classList.remove('bg-slate-900/75', 'border-cyan-400/25', 'text-slate-200');
+      } else {
+        btn.classList.remove('active', 'bg-cyan-500/25', 'border-cyan-400', 'text-cyan-200');
+        btn.classList.add('bg-slate-900/75', 'border-cyan-400/25', 'text-slate-200');
+      }
+    }
+
+    // Irisan 3D (Cross-Section)
+    const clipAxisSelect = document.getElementById('clip-axis');
+    const clipSlider = document.getElementById('clip-slider');
+
+    function updateClippingPlane() {
+      const axis = state.clipAxis;
+      const val = parseFloat(clipSlider.value);
+      activePlanes.length = 0;
+
+      if (axis === 'none') {
+        clipSlider.disabled = true;
+        clipSlider.classList.add('opacity-40');
+      } else {
+        clipSlider.disabled = false;
+        clipSlider.classList.remove('opacity-40');
+        if (axis === 'y') clippingPlane.normal.set(0, -1, 0);
+        if (axis === 'x') clippingPlane.normal.set(-1, 0, 0);
+        if (axis === 'z') clippingPlane.normal.set(0, 0, -1);
+        clippingPlane.constant = val;
+        activePlanes.push(clippingPlane);
+      }
+      applyVisualModes();
+    }
+
+    clipAxisSelect.addEventListener('change', (e) => {
+      state.clipAxis = e.target.value;
+      clipSlider.value = 1.2;
+      updateClippingPlane();
+    });
+
+    clipSlider.addEventListener('input', updateClippingPlane);
+
+    // X-Ray Toggle
+    document.getElementById('btn-xray').addEventListener('click', function () {
+      state.xray = !state.xray;
+      setDockButtonState(this, state.xray);
+      applyVisualModes();
+    });
+
+    // Wireframe Toggle
+    document.getElementById('btn-wireframe').addEventListener('click', function () {
+      state.wireframe = !state.wireframe;
+      setDockButtonState(this, state.wireframe);
+      applyVisualModes();
+    });
+
+    // Pin Hotspot Toggle
+    document.getElementById('btn-hotspots').addEventListener('click', function () {
+      state.showHotspots = !state.showHotspots;
+      setDockButtonState(this, state.showHotspots);
+      activePinElements.forEach((item) => {
+        item.el.style.display = state.showHotspots ? 'block' : 'none';
+      });
+    });
+
+    // Auto Rotate Toggle
+    document.getElementById('btn-autorotate').addEventListener('click', function () {
+      state.autoRotate = !state.autoRotate;
+      controls.autoRotate = state.autoRotate;
+      controls.autoRotateSpeed = 2.2;
+      setDockButtonState(this, state.autoRotate);
+    });
+
+    // Simulasi Kerja (Denyut Cahaya RGB & Aliran Daya)
+    document.getElementById('btn-simulate').addEventListener('click', function () {
+      state.simulate = !state.simulate;
+      setDockButtonState(this, state.simulate);
+      if (state.simulate) {
+        showToast('Simulasi Aliran Daya & Aktivitas Termal Aktif');
+      }
+    });
+
+    // Reset Kamera
+    document.getElementById('btn-reset-cam').addEventListener('click', () => {
+      camera.position.copy(defaultCamPos);
+      controls.target.set(0, 0.15, 0);
+      controls.update();
+      showToast('Posisi kamera dikembalikan ke sudut default.');
+    });
+
+    // =========================================================================
+    // 10. ANIMATION LOOP & RESPONSIVE RESIZE
+    // =========================================================================
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const elapsed = clock.getElapsedTime();
+
+      // Efek melayang halus di atas pedestal
+      modelPivot.position.y = 0.15 + Math.sin(elapsed * 1.8) * 0.035;
+
+      // Animasi cincin holografik pedestal
+      innerTechRing.rotation.z = elapsed * 0.45;
+      polarGrid.rotation.y = -elapsed * 0.15;
+
+      // Simulasi Kerja: Denyut warna energi RGB/cyan & intensitas cahaya bawah
+      if (state.simulate) {
+        const pulse = (Math.sin(elapsed * 4.5) + 1) * 0.5;
+        const hue = (elapsed * 0.15) % 1;
+        bottomFillLight.color.setHSL(hue, 0.85, 0.55);
+        bottomFillLight.intensity = 1.8 + pulse * 1.6;
+        outerGlowRing.material.color.setHSL(hue, 0.9, 0.6);
+      } else {
+        bottomFillLight.color.setHex(0x0ea5e9);
+        bottomFillLight.intensity = 2.0;
+        outerGlowRing.material.color.setHex(0x22d3ee);
+      }
+
+      controls.update();
+      updateHotspotPositions();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Inisialisasi Awal Aplikasi
+    window.addEventListener('load', () => {
+      lucide.createIcons();
+      selectComponent(0); // Mulai dengan Motherboard ASUS Z170-P
+      animate();
+    });
+  </script>
+</body>
+</html>
